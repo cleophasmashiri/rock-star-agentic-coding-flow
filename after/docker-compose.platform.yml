@@ -3,10 +3,11 @@ services:
   postgres:
     image: postgres:16
     environment: { POSTGRES_PASSWORD: dev }
-    volumes: ["pg:/var/lib/postgresql/data"]
+    volumes: ["pg:/var/lib/postgresql/data", "./initdb:/docker-entrypoint-initdb.d:ro"]
   gitea:                       # git + issues + projects(Kanban) + PRs + Actions(CI)
     image: gitea/gitea:1.22
     environment: { GITEA__database__DB_TYPE: postgres, GITEA__database__HOST: postgres:5432,
+                   GITEA__database__NAME: gitea, GITEA__database__USER: postgres, GITEA__database__PASSWD: dev,
                    GITEA__actions__ENABLED: "true" }
     ports: ["3000:3000", "2222:22"]
     depends_on: [postgres]
