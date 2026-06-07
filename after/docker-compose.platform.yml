@@ -1,0 +1,49 @@
+# The team's local "SaaS" — all OSS, all local (reference solution).
+services:
+  postgres:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: dev }
+    volumes: ["pg:/var/lib/postgresql/data"]
+  gitea:                       # git + issues + projects(Kanban) + PRs + Actions(CI)
+    image: gitea/gitea:1.22
+    environment: { GITEA__database__DB_TYPE: postgres, GITEA__database__HOST: postgres:5432,
+                   GITEA__actions__ENABLED: "true" }
+    ports: ["3000:3000", "2222:22"]
+    depends_on: [postgres]
+  gitea-runner:                # executes Gitea Actions (the CI gate)
+    image: gitea/act_runner:latest
+    environment: { GITEA_INSTANCE_URL: http://gitea:3000, GITEA_RUNNER_REGISTRATION_TOKEN: "${RUNNER_TOKEN}" }
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    depends_on: [gitea]
+  wiki:                        # docs — Confluence alternative
+    image: requarks/wiki:2
+    environment: { DB_TYPE: postgres, DB_HOST: postgres, DB_USER: postgres, DB_PASS: dev, DB_NAME: wiki }
+    ports: ["3001:3000"]
+    depends_on: [postgres]
+  mattermost:                  # chat + notifications — Teams/Slack alternative
+    image: mattermost/mattermost-team-edition:9
+    environment: { MM_SQLSETTINGS_DRIVERNAME: postgres,
+                   MM_SQLSETTINGS_DATASOURCE: "postgres://postgres:dev@postgres/mattermost?sslmode=disable" }
+    ports: ["8065:8065"]
+    depends_on: [postgres]
+  ollama:                      # the LOCAL LLM — serves an open coding model in Docker
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama:/root/.ollama"]
+    # After up:  docker compose exec ollama ollama pull qwen2.5-coder:14b
+    # Runners reach it at http://ollama:11434 (OpenAI-compatible at /v1).
+  approvals:                   # the HUMAN UI — submit features + approve the plan/stack gates (FastAPI)
+    build: ./approvals
+    ports: ["8080:8080"]       # open http://localhost:8080 to submit a feature / approve gates
+  orchestrator:                # THE ORCHESTRATOR — fully local; drives a CLI runner over Ollama
+    build: ./orchestrator
+    environment: { GITEA_URL: http://gitea:3000, MM_URL: http://mattermost:8065,
+                   OLLAMA_BASE_URL: http://ollama:11434/v1,
+                   OLLAMA_MODEL: "",            # REQUIRED — set me, e.g. qwen2.5-coder:14b (no default)
+                   AGENT_RUNNER: goose,         # goose | aider | openhands
+                   APPROVALS_URL: http://approvals:8080 }
+    depends_on: [gitea, mattermost, ollama, approvals]
+    # submit a feature in the UI (http://localhost:8080), then run a worker for it:
+    #   docker compose run --rm -e OLLAMA_MODEL=qwen2.5-coder:14b orchestrator
+    # (or pass -e CC_BRIEF="..." to skip the UI for the brief)
+volumes: { pg: {}, ollama: {} }

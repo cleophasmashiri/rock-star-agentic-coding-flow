@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Runner-agnostic LEASH (reference). Install as the Gitea repo's server-side
+# `pre-receive` hook. This holds no matter which agent/runner pushed — it does
+# NOT rely on Claude Code hooks.
+#
+# It enforces two things:
+#   1. No DIRECT pushes to protected branches — changes must arrive via a PR,
+#      so Gitea branch protection (PR + green CI + reviewer PASS) is the real
+#      merge gate. A rogue agent that tries to push main is rejected here.
+#   2. No secrets in the incoming commits.
+set -euo pipefail
+
+PROTECTED='^refs/heads/(main|master)$'
+
+while read -r oldrev newrev ref; do
+  # 1. block direct pushes to protected branches (PR-only).
+  #    Gitea sets GITEA_PUSHER_*/internal PR vars on merge pushes; a plain push
+  #    to main from an agent has none — reject it.
+  if [[ "$ref" =~ $PROTECTED && "${GITEA_INTERNAL_PUSH:-false}" != "true" ]]; then
+    echo "BLOCKED: direct pushes to ${ref#refs/heads/} are not allowed — open a PR." >&2
+    echo "         The human merge gate is enforced by Gitea branch protection." >&2
+    exit 1
+  fi
+  # 2. secret scan on the incoming range.
+  if command -v gitleaks >/dev/null 2>&1 && [[ "$oldrev" != "0000000000000000000000000000000000000000" ]]; then
+    gitleaks detect --no-banner --redact --log-opts="${oldrev}..${newrev}" \
+      || { echo "BLOCKED: gitleaks flagged a likely secret in the pushed commits." >&2; exit 1; }
+  fi
+done
+
+# Complete the leash OUTSIDE this hook (see guardrails/README.md):
+#  - Gitea branch protection on main: require PR + green CI + >=1 approval (the
+#    reviewer-agent / human), disallow direct push & self-approval.
+#  - Run each agent in a sandboxed worktree/container with scoped, short-lived
+#    creds — so "least privilege" is enforced by the sandbox, not an agent prompt.

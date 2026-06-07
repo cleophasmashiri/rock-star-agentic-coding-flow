@@ -1,0 +1,10 @@
+# "On time" defined as policy. Edit via PR. The orchestrator/scorecard read this.
+status_sla:                 # max time a task may sit in a status before it is "at risk"
+  in_progress: 2d
+  in_review:   1d
+  blocked:     4h
+gate_budget:                # expected effort per gate, seeded from past cc-audit durations
+  implement: 1d
+  review:    2h
+  db_migrate: 1d
+  acceptance_tests: 4h

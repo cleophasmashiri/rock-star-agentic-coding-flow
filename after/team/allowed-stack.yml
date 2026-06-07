@@ -1,0 +1,12 @@
+# The approved tech radar + budgets. The architect-agent MUST choose within this.
+# Edit via PR.
+allowed:                                     # ADOPT — free to choose
+  backend:   [java-spring, kotlin-ktor, node-nest]
+  datastore: [postgres, mysql]
+  frontend:  [angular, react]
+  cache:     [redis]
+trial:       [go-fiber]                      # allowed only with an explicit noted reason
+hold:        [mongodb, microservices-by-default]   # NOT allowed without a human exception
+constraints:
+  cost_ceiling_usd_month: 500                # infra + licensing budget
+  perf: { p99_ms: 200, throughput_rps: 500 }

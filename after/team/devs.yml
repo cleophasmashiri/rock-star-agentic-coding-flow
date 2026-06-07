@@ -1,0 +1,11 @@
+# The assignable-devs registry. Edit via PR — this IS the access-control surface.
+# Roles are generic; `stack` is an individual's known tools (tie-breaker), NOT the
+# project stack (the architect's ADR picks that).
+devs:
+  - name: priya  roles: [product]                          jira_account_id: g-priya
+  - name: dana   roles: [design]                           jira_account_id: g-dana
+  - name: alex   roles: [backend]  stack: [java, postgres] jira_account_id: g-alex
+  - name: sam    roles: [backend]  stack: [node, postgres] jira_account_id: g-sam
+  - name: chen   roles: [ui]        stack: [angular]        jira_account_id: g-chen
+  - name: bilal  roles: [ui]        stack: [react]          jira_account_id: g-bilal
+  - name: omar   roles: [qa]        stack: [playwright]     jira_account_id: g-omar

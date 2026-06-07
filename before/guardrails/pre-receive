@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Runner-agnostic LEASH (skeleton). Install as the Gitea repo's server-side
+# `pre-receive` hook. Does NOT rely on Claude Code hooks. Full ref: ../../after/guardrails/.
+set -euo pipefail
+
+# TODO: for each pushed ref, enforce the leash:
+#   1. BLOCK direct pushes to ^refs/heads/(main|master)$ (PR-only) so Gitea branch
+#      protection (PR + green CI + reviewer PASS) is the real merge gate.
+#   2. Run gitleaks on the incoming commit range; reject if a secret is found.
+# Then complete the leash outside this hook (see guardrails/README.md):
+#   - Gitea branch protection on main (PR + CI + >=1 approval; no direct push).
+#   - Run each agent in a sandboxed worktree/container with scoped, short-lived creds.
+
+while read -r oldrev newrev ref; do
+  : # TODO
+done
