@@ -2,7 +2,7 @@
 """THE ORCHESTRATOR (skeleton).
 
 FULLY LOCAL: every role agent runs on a local Ollama model via a pluggable
-CLI-delegate runner (goose / aider / openhands). No cloud, no Anthropic SDK.
+CLI-delegate runner (goose / aider / openhands). No cloud, no proprietary SDK.
 
 Fill in the TODOs. The full reference is in ../../after/orchestrator/run.py.
 """

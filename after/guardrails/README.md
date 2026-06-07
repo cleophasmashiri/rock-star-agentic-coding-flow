@@ -1,8 +1,8 @@
 # The leash (runner-agnostic guardrails)
 
-The autonomy guardrails do **not** depend on Claude Code — they sit in the
+The autonomy guardrails do **not** depend on any single runner — they sit in the
 platform and the OS, so they hold no matter which agent/runner (goose / aider /
-openhands / Claude) is driving. Three layers:
+openhands / any agent) is driving. Three layers:
 
 1. **Gitea branch protection on `main`** — require a PR + green CI + ≥1 approval
    (the reviewer-agent's PASS and/or a human), disallow direct pushes and

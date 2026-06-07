@@ -2,7 +2,7 @@
 """THE ORCHESTRATOR (reference solution).
 
 FULLY LOCAL: every role agent runs on a local Ollama model via a pluggable
-CLI-delegate runner (goose / aider / openhands). No cloud, no Anthropic SDK.
+CLI-delegate runner (goose / aider / openhands). No cloud, no proprietary SDK.
 
 The orchestrator itself is plain deterministic code — it dispatches agents and
 enforces the three human gates. The *agent loop* (tool use against the model) is
@@ -131,7 +131,7 @@ def run_agent(name: str, payload: dict, cwd: str | None = None) -> AgentResult:
 
 
 def run_agent_in_worktree(name: str, payload: dict, branch: str) -> AgentResult:
-    return run_agent(name, payload, worktree_for(branch))  # git worktree per branch (Ch 26)
+    return run_agent(name, payload, worktree_for(branch))  # git worktree per branch
 
 
 def human_gate(name: str, payload: Any) -> None:
@@ -214,4 +214,4 @@ if __name__ == "__main__":
 # Least-privilege caveat: a CLI-delegate runner enforces per-agent tool limits
 # LESS strictly than a tools: allowlist. The leash here is runner-agnostic — see
 # guardrails/: Gitea branch protection + the pre-receive hook + a sandboxed runner
-# with scoped creds. It does NOT depend on Claude Code hooks.
+# with scoped creds. It does NOT depend on a runner's client-side hooks.

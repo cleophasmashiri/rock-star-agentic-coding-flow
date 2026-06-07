@@ -2,7 +2,7 @@
 
 A role-specialised, mostly-autonomous software-delivery flow that runs **entirely locally** on `docker compose` — no cloud, no vendor lock-in. The runnable code is in [`before/`](before/) (skeleton) and [`after/`](after/) (reference); the centrepiece is the orchestrator, [`after/orchestrator/run.py`](after/orchestrator/run.py).
 
-> Adapted from the *Claude Code Rock-Star* playbook's "Autonomous Feature Factory" capstone. Inline `(Ch N)` and "Capstone 1/2" references point to chapters in that playbook — you don't need them to use this repo.
+> Adapted from a longer engineering playbook and made **vendor-neutral** — bring whatever agent runner and model you like; nothing here is tied to a specific vendor.
 
 ## How to use
 
@@ -30,7 +30,7 @@ Crucially, the whole platform runs **on your laptop with `docker compose`** — 
 
 > **Minimal human interaction ≠ no human.** Autonomy is bounded by *least privilege* (each agent has only the tools its role needs) and a handful of *hard human gates* (approve the plan, approve the tech-stack ADR, approve the merge) enforced in the platform — Gitea branch protection + a server-side hook + a sandboxed runner (Recipe 0.3), not a single vendor's hook system. An agent that can't merge to `main` or deploy to prod can run wide open in between. Build the leash before you let it run.
 
-> 📦 **What this repo ships.** A **Python orchestrator** ([`after/orchestrator/run.py`](after/orchestrator/run.py)) driving a **pluggable CLI runner** (`goose` / `aider` / `openhands`) over a local **Ollama** model — no cloud, no Anthropic SDK. It is **tool-neutral**: agents live in `agents/*.md`, config in `team/`, the leash in `guardrails/`, and a small **FastAPI `approvals/` UI** (`:8080`) is where a human submits a feature and approves the plan/stack gates (the merge gate stays in Gitea). The recipes below teach the *pattern* and use Claude-Code surfaces (subagents, hooks, the Agent SDK) as the default illustration; where this repo diverges to stay vendor-neutral, it's called out inline.
+> 📦 **What this repo ships.** A **Python orchestrator** ([`after/orchestrator/run.py`](after/orchestrator/run.py)) driving a **pluggable CLI runner** (`goose` / `aider` / `openhands`) over a local **Ollama** model — no cloud, no proprietary SDK. It is **tool-neutral**: agents live in `agents/*.md`, config in `team/`, the leash in `guardrails/`, and a small **FastAPI `approvals/` UI** (`:8080`) is where a human submits a feature and approves the plan/stack gates (the merge gate stays in Gitea). The recipes below teach the *pattern* using common agent surfaces (subagents, hooks, an agent SDK or CLI) as the default illustration; swap in whatever runner your team uses.
 
 ### Guided by impact, quality, and time — and tracked
 
@@ -54,18 +54,18 @@ The first two human gates exist *because* of these axes: GATE 1 weighs **impact*
 | Chat / notifications | Teams / Slack | **Mattermost** | ✅ |
 | Design | Figma | **Penpot** (optional, heavier) | ✅ |
 | App DB | Postgres | **Postgres** | ✅ |
-| **LLM runtime** | Claude API (cloud) | **Ollama** serving a local model (e.g. `qwen2.5-coder`, `llama3.1`) | ✅ |
-| **Agent runner** | Claude Code | **Claude Code** (best quality) *or* a local-LLM alt — **Aider / goose / OpenHands / Continue** pointed at Ollama | ✅ |
-| The orchestrator | (humans) | **Python service** — a pluggable CLI runner over Ollama, *or* the Agent SDK (Ch 34) | ✅ |
+| **LLM runtime** | a hosted API | **Ollama** serving a local model (e.g. `qwen2.5-coder`, `llama3.1`) | ✅ |
+| **Agent runner** | a hosted coding agent | **a local agent runner** — **Aider / goose / OpenHands / Continue** pointed at Ollama (or any agent CLI/SDK you prefer) | ✅ |
+| The orchestrator | (humans) | **Python service** — a pluggable runner over Ollama | ✅ |
 | **Human UI** | (Jira/Teams) | **FastAPI `approvals/` app** (`:8080`) — submit a feature + approve the plan/stack gates; merge stays in Gitea | ✅ |
 
 Swap any of these for a sibling you prefer (Forgejo for Gitea, OpenProject/Plane for the tracker, Outline/BookStack for the wiki, Rocket.Chat for chat) — the agent contracts don't change.
 
-**On running the LLM locally.** The whole point of this stack is *no cloud dependency*, so the model runs in Docker too: **Ollama** serves an open coding model on `:11434`, and the agents talk to it. Two honest caveats: (1) Claude Code itself targets Claude models (via the API, Bedrock, or Vertex — Ch 33), so a *fully local* swarm swaps the agent runner for an open-source, Ollama-friendly one (**Aider**, **goose**, **OpenHands**, **Continue**) while keeping the same role/least-privilege/gate design; (2) local models are smaller — expect to **lean harder on the gates** (CI, reviewer-agent, QA acceptance) to catch what a 7-13B model misses. A common hybrid: local Ollama for the high-volume implement steps, Claude for the reviewer/QA judgement calls. Point any runner at the local model with `OPENAI_BASE_URL=http://ollama:11434/v1` (Ollama's OpenAI-compatible API) or the runner's native Ollama setting.
+**On running the LLM locally.** The whole point of this stack is *no cloud dependency*, so the model runs in Docker too: **Ollama** serves an open coding model on `:11434`, and the agents talk to it. Two honest caveats: (1) some hosted coding agents only target their own models, so a *fully local* swarm uses an open-source, Ollama-friendly runner (**Aider**, **goose**, **OpenHands**, **Continue**) while keeping the same role/least-privilege/gate design; (2) local models are smaller — expect to **lean harder on the gates** (CI, reviewer-agent, QA acceptance) to catch what a 7-13B model misses. A common hybrid: local Ollama for the high-volume implement steps, a stronger (possibly hosted) model for the reviewer/QA judgement calls. Point any runner at the local model with `OPENAI_BASE_URL=http://ollama:11434/v1` (Ollama's OpenAI-compatible API) or the runner's native Ollama setting.
 
 ### The agent roster (one specialised agent per role)
 
-Each lives as a `<name>.md` definition with a **least-privilege tool list** and a role system prompt — in `.claude/agents/` if Claude Code is the runner (Ch 7), or tool-neutral `agents/` if a local runner reads them (as the companion project does). Most reuse the *workflow* from Capstone 2's skills — now embedded in an agent that runs headless.
+Each lives as a tool-neutral `agents/<name>.md` definition with a **least-privilege tool list** and a role system prompt, read by the orchestrator and handed to whichever runner you use. Most reuse a proven per-task workflow — now embedded in an agent that runs headless.
 
 | Agent | Role | Tools (least privilege) | May NOT |
 |-------|------------------|--------------------------|---------|
@@ -101,7 +101,7 @@ flowchart TD
     ORC <-->|standups · alerts| MM[(Mattermost)]
 ```
 
-**Recipe format** is the same as Capstones 1–2: 🎯 **Goal** → 🤖 **Claude Code move** → ✅ **Verify** → 💡 **Why**, with a hidden solution per recipe. The `[[cc-audit]]` convention from Capstone 2 carries over unchanged — agents emit it as Gitea issue comments.
+**Recipe format:** 🎯 **Goal** → 🤖 **The move** → ✅ **Verify** → 💡 **Why**, with a hidden solution per recipe. The `[[cc-audit]]` convention (an audit line per gate) is how every step is logged — agents emit it as Gitea issue comments.
 
 ---
 
@@ -110,7 +110,7 @@ flowchart TD
 #### Recipe 0.1 — The whole stack in one `docker compose up`
 
 - 🎯 **Goal:** Git+CI, issue board, docs, and chat running locally — the agents' entire world, reproducible and disposable.
-- 🤖 **Claude Code move:** A single compose file. Ask Claude to scaffold it, then `docker compose up -d`:
+- 🤖 **The move:** A single compose file. Ask your agent to scaffold it, then `docker compose up -d`:
   ```yaml
   # docker-compose.platform.yml — the team's "SaaS", all local OSS.
   services:
@@ -152,7 +152,7 @@ flowchart TD
   volumes: { pg: {}, ollama: {} }
   ```
 - ✅ **Verify:** Gitea at `:3000`, Wiki.js at `:3001`, Mattermost at `:8065` all load; the Actions runner shows as registered in Gitea admin; `docker compose down -v` wipes it clean.
-- 💡 **Why:** The agents act on *real* systems, not mocks — but real systems you own, can reset, and never bill you. The whole capstone is `up`/`down`-able.
+- 💡 **Why:** The agents act on *real* systems, not mocks — but real systems you own, can reset, and never bill you. The whole stack is `up`/`down`-able.
 
 <details>
 <summary>💡 Solution — what good looks like</summary>
@@ -166,7 +166,7 @@ flowchart TD
 #### Recipe 0.2 — Wire each tool to an MCP server
 
 - 🎯 **Goal:** Every platform tool is reachable as first-class tools, scoped to the local instance.
-- 🤖 **Claude Code move:** When the runner is **Claude Code** (or goose), add MCP servers (Ch 14) — in `.claude/settings.json` for Claude Code — using off-the-shelf servers where they exist and thin ones over the REST API where they don't (Ch 34). *(The companion project's Python orchestrator skips MCP and calls Gitea/Mattermost over **REST/`httpx`** directly — same reach, no Claude-specific config.)*
+- 🤖 **The move:** If your runner supports MCP (e.g. goose), add MCP servers — off-the-shelf where they exist, thin ones over the REST API where they don't. *(The Python orchestrator here skips MCP and calls Gitea/Mattermost over **REST/`httpx`** directly — same reach, no runner-specific config.)*
   ```json
   {
     "mcpServers": {
@@ -176,13 +176,13 @@ flowchart TD
     }
   }
   ```
-- ✅ **Verify:** `claude doctor` lists `gitea`, `wiki`, `mattermost`; "create a test issue in repo X" and "post to #dev in Mattermost" both work against the local stack.
+- ✅ **Verify:** the runner's tool/health check lists `gitea`, `wiki`, `mattermost`; "create a test issue in repo X" and "post to #dev in Mattermost" both work against the local stack.
 - 💡 **Why:** Agents coordinate *through these tools* — the issue board is the shared memory, chat is the nudge channel. No MCP, no coordination.
 
 <details>
 <summary>💡 Solution — what good looks like</summary>
 
-- Off-the-shelf MCP where it exists; a **thin custom MCP over the REST API** (Ch 34) where it doesn't — a few tools (`create_issue`, `comment`, `create_pr`) is enough, you don't wrap the whole API.
+- Off-the-shelf MCP where it exists; a **thin custom MCP over the REST API** where it doesn't — a few tools (`create_issue`, `comment`, `create_pr`) is enough, you don't wrap the whole API.
 - Tokens are **scoped to the local instance** and injected via env, never committed.
 - **What you should NOT have done:** have agents shell out to `curl` against each tool ad hoc. An MCP server is the audited, typed, reusable surface; scattered `curl` calls are unauditable and brittle.
 
@@ -191,7 +191,7 @@ flowchart TD
 #### Recipe 0.3 — The leash: runner-agnostic guardrails
 
 - 🎯 **Goal:** Make the *irreversible and outward-facing* actions impossible for an agent to take alone — so everything else can run unattended.
-- 🤖 **Claude Code move:** Put the leash in the **platform**, not the agent runtime — so it holds no matter which runner (goose / aider / Claude Code) pushed. Three layers (see [`after/guardrails/`](after/guardrails/)):
+- 🤖 **The move:** Put the leash in the **platform**, not the agent runtime — so it holds no matter which runner (goose / aider / any agent) pushed. Three layers (see [`after/guardrails/`](after/guardrails/)):
   ```
   # 1. Gitea branch protection on `main`: no direct pushes; require PR + green CI + a
   #    reviewer-agent PASS + >=1 approval. This IS the merge gate, enforced server-side.
@@ -200,7 +200,7 @@ flowchart TD
   # 3. Run each agent in a sandboxed worktree/container with SCOPED, short-lived creds
   #    (push feature branches + comment; cannot merge or deploy). Least privilege by token.
   ```
-  > **If — and only if — your runner is Claude Code**, you can add a `PreToolUse` hook (Ch 13) as a *fourth* layer that blocks `git push`/`merge` to main and secret commits client-side. A non-Claude runner (goose/aider) won't fire that hook — which is exactly why layers 1–3 carry the leash.
+  > **If your runner offers client-side hooks** (some do), you can add one as a *fourth* layer that blocks `git push`/`merge` to main and secret commits before they leave the machine. A runner without hooks won't fire it — which is exactly why layers 1–3 carry the leash.
 - ✅ **Verify:** Any agent — under any runner — that tries to push/merge `main` is rejected by branch protection + the `pre-receive` hook; a normal feature-branch PR is not; the secret scan blocks a staged key.
 - 💡 **Why:** "Minimal human interaction" is only responsible if the agent *cannot* do the dangerous thing. A leash that lives in a *specific runner's* hook system silently disappears the moment you swap runners — so it belongs in the git server + the sandbox.
 
@@ -208,8 +208,8 @@ flowchart TD
 <summary>💡 Solution — what good looks like</summary>
 
 - The dangerous actions (merge to `main`, prod deploy) are blocked **server-side + by the sandbox** — branch protection, the `pre-receive` hook, and scoped creds — so a prompt-injected or confused agent can't cross the line *regardless of runner*.
-- The merge gate opens only via a human approval on the PR; least privilege is enforced by the **token scope**, not a `tools:` line a non-Claude runner ignores.
-- **What you should NOT have done:** rely on the agent's *prompt* ("please don't merge to main"), or on a **Claude-Code-only `PreToolUse` hook** as the sole leash. Instructions are advisory and a runner-specific hook is fragile — build the leash in the platform, not the prompt or one vendor's runtime.
+- The merge gate opens only via a human approval on the PR; least privilege is enforced by the **token scope**, not a `tools:` line a CLI runner ignores.
+- **What you should NOT have done:** rely on the agent's *prompt* ("please don't merge to main"), or on a **runner-specific client-side hook** as the sole leash. Instructions are advisory and a runner-specific hook is fragile — build the leash in the platform, not the prompt or one vendor's runtime.
 
 </details>
 
@@ -219,8 +219,8 @@ flowchart TD
 
 #### Recipe 1.1 — One agent per role, least privilege
 
-- 🎯 **Goal:** Each lifecycle role becomes a `<role>-agent.md` — `.claude/agents/` for the Claude Code runner, or tool-neutral `agents/` read by the orchestrator (as the companion project does) — with exactly the tools it needs and a system prompt that *is* its job.
-- 🤖 **Claude Code move:** Author the agent files (Ch 7). Most reuse a Capstone 2 skill body as their prompt. The pivotal one, `backend-agent` (it owns the database schema **and** the API, in whatever stack the architect's ADR chose):
+- 🎯 **Goal:** Each lifecycle role becomes a tool-neutral `agents/<role>-agent.md`, read by the orchestrator, with exactly the tools it needs and a system prompt that *is* its job.
+- 🤖 **The move:** Author the agent files. Most reuse a proven per-task workflow as their prompt. The pivotal one, `backend-agent` (it owns the database schema **and** the API, in whatever stack the architect's ADR chose):
   ```markdown
   ---
   name: backend-agent
@@ -251,7 +251,7 @@ flowchart TD
 <summary>💡 Solution — what good looks like</summary>
 
 - The agent's `tools:` list is **exactly its job** — `backend-agent` can edit code and talk to Gitea, but has no deploy or merge tool, so autonomy can't exceed its mandate.
-- Its prompt reuses the proven Capstone 2 `/implement-api-task` workflow (contract-first, real-DB integration tests, halt-on-red), so quality doesn't regress just because a machine is driving.
+- Its prompt reuses the proven `/implement-api-task` workflow (contract-first, real-DB integration tests, halt-on-red), so quality doesn't regress just because a machine is driving.
 - **What you should NOT have done:** one all-powerful "dev agent" with every tool. Least privilege per role is what makes the swarm auditable and bounds the blast radius of any single agent going wrong.
 
 </details>
@@ -259,14 +259,14 @@ flowchart TD
 #### Recipe 1.2 — The reviewer/verifier agent has no hands
 
 - 🎯 **Goal:** One `reviewer-agent` that both critiques the PR **and** verifies the role checklist — but cannot change code, merge, or dispatch. Separation of duties, enforced by tools.
-- 🤖 **Claude Code move:** One **independent peer** that does *both* jobs — review the diff **and** verify the role checklist — with **read + comment only** (no `Edit`, no merge, no dispatch):
+- 🤖 **The move:** One **independent peer** that does *both* jobs — review the diff **and** verify the role checklist — with **read + comment only** (no `Edit`, no merge, no dispatch):
   ```markdown
   ---
   name: reviewer-agent
   description: Independently reviews a Gitea PR (correctness, security, contract-fidelity) AND verifies the task's role checklist against evidence. Comments a verdict. Cannot edit, merge, or dispatch.
   tools: [Read, Bash, mcp__gitea]
   ---
-  Input: a Gitea PR + the task's role checklist (.claude/team/role-checklists/<role>.md).
+  Input: a Gitea PR + the task's role checklist (team/role-checklists/<role>.md).
 
   REVIEW — run the /review and /security-review lenses on the diff. Post findings 🔴/🟡/⚪.
   VERIFY — for EACH Definition-of-Done item, find the cited evidence (the issue's [[cc-audit]]
@@ -283,7 +283,7 @@ flowchart TD
 <details>
 <summary>💡 Solution — what good looks like</summary>
 
-- Authority is **tool-enforced**: with no `Edit`/merge/dispatch, the agent can only judge — so "PASS" means something, and fixes flow back to the owner. It reuses the `/review` + `/security-review` lenses (Ch 9) **and** checks the checklist from **evidence** (cc-audit/CI/artifacts), never the doer's claim.
+- Authority is **tool-enforced**: with no `Edit`/merge/dispatch, the agent can only judge — so "PASS" means something, and fixes flow back to the owner. It reuses the `/review` + `/security-review` lenses **and** checks the checklist from **evidence** (cc-audit/CI/artifacts), never the doer's claim.
 - The verdict is **two logged gates** (`review` + `verify`), so `/quality-report` shows each task was independently reviewed *and* verified, by which agent.
 - **What you should NOT have done:** give it `Edit` "to fix small things" (you lose the second pair of eyes), let the doing agent self-attest, or fold the check into the orchestrator. Keep *doing*, *judging*, and *enforcing* in different hands — but judging the code and judging the checklist are one job, so one peer owns both.
 
@@ -292,11 +292,11 @@ flowchart TD
 #### Recipe 1.3 — Role checklists: best-practice readiness + Definition-of-Done
 
 - 🎯 **Goal:** Make "has the required skills for this role" and "finished this task properly" *concrete* — a committed, best-practice checklist per role, not an assumption baked into a prompt.
-- 🤖 **Claude Code move:** A committed, PR-gated checklist per role at `.claude/team/role-checklists/<role>.md` (same governance surface as `devs.yml`). Each has **two layers** — *readiness* (capability, checked once at preflight) and *Definition-of-Done* (checked every task) — and **every item points at evidence**:
+- 🤖 **The move:** A committed, PR-gated checklist per role at `team/role-checklists/<role>.md` (same governance surface as `devs.yml`). Each has **two layers** — *readiness* (capability, checked once at preflight) and *Definition-of-Done* (checked every task) — and **every item points at evidence**:
   ```markdown
-  # .claude/team/role-checklists/backend.md — edit via PR.
+  # team/role-checklists/backend.md — edit via PR.
   ## Readiness (verified ONCE, at preflight — proves the agent CAN do the role)
-  - [ ] tools present: Bash, Edit, mcp__gitea         → orchestrator runs `claude doctor`
+  - [ ] tools present: Bash, Edit, mcp__gitea         → orchestrator runs a tool preflight
   - [ ] skills loaded: implement-api-task, implement-db-task, mutation-drill
   - [ ] golden-fixture eval PASSES: on a known issue → green build (stack's verify command) + a PR,
         AND a seeded mutation (flip `<`→`<=`) turns a test RED  (proves tests catch bugs, not decorate)
@@ -309,7 +309,7 @@ flowchart TD
   - [ ] /review clean (+ /security-review if auth) → [[cc-audit]] gate=review
   ```
   ```markdown
-  # .claude/team/role-checklists/ui.md   (qa / design / po get the same shape)
+  # team/role-checklists/ui.md   (qa / design / po get the same shape)
   ## Definition of Done
   - [ ] typed client GENERATED from the spec (not hand-typed) → generated dir present in PR
   - [ ] component unit tests + Playwright e2e green           → gate=unit_tests, gate=e2e_tests
@@ -322,7 +322,7 @@ flowchart TD
 <details>
 <summary>💡 Solution — what good looks like</summary>
 
-- Items are **evidence-checkable**, not aspirational — each names the artifact that proves it. The **readiness** layer (incl. the mutation-drill eval from Capstone 1's challenge 7) proves the agent *can* do the role; the **DoD** layer proves it *did*, per task.
+- Items are **evidence-checkable**, not aspirational — each names the artifact that proves it. The **readiness** layer (incl. a mutation-drill eval) proves the agent *can* do the role; the **DoD** layer proves it *did*, per task.
 - Checklists are **committed and PR-gated** (like `devs.yml` / `slas.yml`), so changing the bar is a reviewed, auditable decision.
 - **What you should NOT have done:** a checklist of vibes ("write good tests", "follow best practice") with no evidence pointer. If an item can't be checked against an artifact, an agent can't be held to it and the verifier can't enforce it.
 
@@ -331,9 +331,9 @@ flowchart TD
 #### Recipe 1.4 — The `architect-agent` owns the tech stack (cost · performance · landscape · allowlist)
 
 - 🎯 **Goal:** One agent owns the tech-stack decision — choosing only from an **approved allowlist**, under **cost** and **performance** constraints, informed by the **current landscape** — and records it as an ADR a **human approves**. The implementer agents inherit the stack; they never pick it.
-- 🤖 **Claude Code move:** A committed, PR-gated allowlist + budgets (the team's "tech radar"), and an architect agent constrained to it:
+- 🤖 **The move:** A committed, PR-gated allowlist + budgets (the team's "tech radar"), and an architect agent constrained to it:
   ```yaml
-  # .claude/team/allowed-stack.yml — the approved tech radar + budgets. Edit via PR.
+  # team/allowed-stack.yml — the approved tech radar + budgets. Edit via PR.
   allowed:                                     # ADOPT — free to choose
     backend:   [java-spring, kotlin-ktor, node-nest]
     datastore: [postgres, mysql]
@@ -383,7 +383,7 @@ flowchart TD
 #### Recipe 2.1 — The coordinator loop (the orchestrator service)
 
 - 🎯 **Goal:** A long-running orchestrator that reads a brief, decomposes it, and drives the role agents to green — pausing only at the human gates.
-- 🤖 **Claude Code move:** The orchestrator is **plain deterministic code** that *dispatches* agents — it walks the dependency DAG and runs each agent headless in its own worktree (Ch 26). The companion project ships it as a **Python `orchestrator/run.py`** with a **pluggable runner** (`runAgent` → a local CLI like goose/aider over Ollama); you could equally write it with the **Agent SDK** (Ch 34) if your runner is Claude. The loop is identical either way (pseudocode below; the project's `run.py` is the Python realization):
+- 🤖 **The move:** The orchestrator is **plain deterministic code** that *dispatches* agents — it walks the dependency DAG and runs each agent headless in its own worktree. It ships here as a **Python `orchestrator/run.py`** with a **pluggable runner** (`runAgent` → a local CLI like goose/aider over Ollama); you could equally embed an agent SDK. The loop is identical either way (pseudocode below; `run.py` is the realization):
   ```ts
   // the orchestrator loop (pseudocode) — needs a human only at the gates.
   // companion project: orchestrator/run.py (Python, pluggable runner over Ollama).
@@ -427,7 +427,7 @@ flowchart TD
 #### Recipe 2.2 — The human-interaction gates (what you still approve)
 
 - 🎯 **Goal:** Name the *few* points where a human must say yes — and make everything else autonomous.
-- 🤖 **Claude Code move:** Encode the gates as `humanGate()` pauses (orchestrator) backed by the 0.3 guardrails (branch protection + the `pre-receive` hook + sandbox). **Where the human acts:** the *plan* and *stack* gates surface in the **`approvals/` UI** (`:8080`) — `humanGate()` opens a gate there (`POST /gates`) and blocks until you click Approve/Reject; the *merge* gate is approved in **Gitea** (Approve + Merge on the PR), which branch protection enforces. The full list:
+- 🤖 **The move:** Encode the gates as `humanGate()` pauses (orchestrator) backed by the 0.3 guardrails (branch protection + the `pre-receive` hook + sandbox). **Where the human acts:** the *plan* and *stack* gates surface in the **`approvals/` UI** (`:8080`) — `humanGate()` opens a gate there (`POST /gates`) and blocks until you click Approve/Reject; the *merge* gate is approved in **Gitea** (Approve + Merge on the PR), which branch protection enforces. The full list:
   | Gate | Fires | Why a human is required |
   |------|-------|--------------------------|
   | **Approve plan** | after `po-agent` decomposes, before any code | scope + the **impact** hypothesis/metric ("is this worth building?") and the **time target** ("realistic?") |
@@ -454,7 +454,7 @@ flowchart TD
 #### Recipe 3.1 — Kick off a feature with one brief
 
 - 🎯 **Goal:** Ship a real feature through the swarm with a handful of approvals (plan, stack when needed, merge) and no other human input.
-- 🤖 **Claude Code move:** Start the orchestrator with a brief; watch it work in Gitea (issues, PRs, CI) and Mattermost (standups):
+- 🤖 **The move:** Start the orchestrator with a brief; watch it work in Gitea (issues, PRs, CI) and Mattermost (standups):
   ```
   # submit the feature in the approvals UI (http://localhost:8080), then start a worker:
   $ OLLAMA_MODEL=qwen2.5-coder:14b docker compose run --rm orchestrator
@@ -483,9 +483,9 @@ flowchart TD
 #### Recipe 3.2 — Observe, audit, and cap the swarm
 
 - 🎯 **Goal:** Know what every agent did, and guarantee the run can't run away.
-- 🤖 **Claude Code move:** Reuse Capstone 2's reporting on this stack, plus autonomy-specific limits:
+- 🤖 **The move:** Reuse the reporting on this stack, plus autonomy-specific limits:
   ```
-  # /quality-report (Capstone 2) works unchanged — cc-audit comments now live on Gitea issues.
+  # /quality-report works unchanged — cc-audit comments live on Gitea issues.
   > /quality-report <epic/milestone>     # gates done, by which AGENT, which command, durations
   # Autonomy limits (in the orchestrator + guardrails):
   #  - budget cap: stop after N agent-invocations or $X equivalent; notify, don't loop.
@@ -493,12 +493,12 @@ flowchart TD
   #  - blast radius: agents work only in worktrees; main is branch-protected (0.3).
   ```
 - ✅ **Verify:** `/quality-report` attributes every gate to a specific *agent* with durations; tripping the budget cap pauses the run and posts to Mattermost; the kill switch stops dispatch.
-- 💡 **Why:** Autonomy without observability is a liability. The same `[[cc-audit]]` trail that proved *who* in Capstone 2 now proves *which agent* — and the caps mean a bad loop costs minutes, not your month's budget.
+- 💡 **Why:** Autonomy without observability is a liability. The `[[cc-audit]]` trail proves *which agent* did each gate — and the caps mean a bad loop costs minutes, not your month's budget.
 
 <details>
 <summary>💡 Solution — what good looks like</summary>
 
-- The audit trail is **identical to Capstone 2** — only the `dev` field now names an agent — so `/quality-report` and `/portfolio-report` work unchanged, and a human can see exactly which agent did which gate, how long it took.
+- The audit trail is the standard `[[cc-audit]]` log — the `dev` field names an agent — so `/quality-report` and `/portfolio-report` work, and a human can see exactly which agent did which gate, how long it took.
 - A **budget cap + kill switch + worktree/branch-protection** mean the worst case is a paused run and a few wasted minutes, not an unbounded spend or a corrupted `main`.
 - **What you should NOT have done:** run the swarm with no cost ceiling or stop control. An autonomous loop with a bug and no cap is the one failure mode that turns a productivity tool into a bill.
 
@@ -507,7 +507,7 @@ flowchart TD
 #### Recipe 3.3 — `/delivery-scorecard`: track impact, quality, and time
 
 - 🎯 **Goal:** Per feature, answer the only question that matters — *did we deliver, on impact, on quality, and on time?* — from logged data, not opinion.
-- 🤖 **Claude Code move:** A command that joins the **impact record** (set at plan) with the `[[cc-audit]]` trail (quality gates + durations), and schedules an after-release impact check:
+- 🤖 **The move:** A command that joins the **impact record** (set at plan) with the `[[cc-audit]]` trail (quality gates + durations), and schedules an after-release impact check:
   ```
   > /delivery-scorecard <epic>
   # 🎯 IMPACT   — hypothesis + success metric from the plan's gate=impact record;
@@ -542,10 +542,10 @@ flowchart TD
 
 | Phase | Levers pulled |
 |-------|---------------|
-| 0 | Local OSS platform on `docker compose`; tool access via REST or MCP (14, 34); runner-agnostic leash — branch protection + a `pre-receive` hook + sandbox (24) |
-| 1 | Custom subagents, one per role, least-privilege tools (7); reused Capstone 2 skill workflows; an `architect-agent` that owns the tech stack (cost/perf/landscape vs an allowlist → human-approved ADR); best-practice role checklists (readiness + DoD) enforced by an independent `reviewer-agent` (code review **and** checklist verification in one peer); separation of *doing / judging / enforcing* |
-| 2 | Orchestrator service — Python + pluggable CLI runner over Ollama, or the Agent SDK (34); dependency-DAG dispatch, parallel worktrees (26), human-gate design (plan/stack via a FastAPI approvals UI, merge in Gitea), verifier-gated advancement |
-| 3 | Headless autonomous run (25), `/quality-report` over agent audit trails (14), budget caps + kill switch; the `dev-manager-agent` rolls up the delivery scorecard for the human — 🎯 impact (measured after release), ✅ quality (gates), ⚡ time (cycle time vs target) |
+| 0 | Local OSS platform on `docker compose`; tool access via REST or MCP; runner-agnostic leash — branch protection + a `pre-receive` hook + sandbox |
+| 1 | Custom subagents, one per role, least-privilege tools; reused per-task workflows; an `architect-agent` that owns the tech stack (cost/perf/landscape vs an allowlist → human-approved ADR); best-practice role checklists (readiness + DoD) enforced by an independent `reviewer-agent` (code review **and** checklist verification in one peer); separation of *doing / judging / enforcing* |
+| 2 | Orchestrator service — Python + pluggable CLI runner over Ollama; dependency-DAG dispatch, parallel worktrees, human-gate design (plan/stack via a FastAPI approvals UI, merge in Gitea), verifier-gated advancement |
+| 3 | Headless autonomous run, `/quality-report` over agent audit trails, budget caps + kill switch; the `dev-manager-agent` rolls up the delivery scorecard for the human — 🎯 impact (measured after release), ✅ quality (gates), ⚡ time (cycle time vs target) |
 
 ### Make it yours
 

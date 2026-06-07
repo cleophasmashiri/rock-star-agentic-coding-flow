@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runner-agnostic LEASH (reference). Install as the Gitea repo's server-side
 # `pre-receive` hook. This holds no matter which agent/runner pushed — it does
-# NOT rely on Claude Code hooks.
+# NOT rely on a runner's client-side hooks.
 #
 # It enforces two things:
 #   1. No DIRECT pushes to protected branches — changes must arrive via a PR,

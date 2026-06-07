@@ -8,7 +8,7 @@
     (orchestrator/run.py) — a FULLY LOCAL service that walks the dependency DAG
     and dispatches the role agents, pausing only at the gates. Each agent runs
     via a pluggable CLI-delegate runner (goose / aider / openhands) over Ollama —
-    no cloud, no Anthropic SDK.
+    no cloud, no proprietary SDK.
 
   DEFINITION OF DONE
     - `docker compose -f docker-compose.platform.yml up -d` brings up Gitea
@@ -28,7 +28,7 @@
     [ ] approvals/app.py           — the human UI (FastAPI): submit form + pending-gates buttons
                                      + the /features and /gates endpoints the orchestrator calls
     [ ] guardrails/                — runner-agnostic leash (pre-receive hook +
-                                     Gitea branch protection + sandbox); NO Claude hooks
+                                     Gitea branch protection + sandbox); NO runner-specific hooks
     [ ] agents/*.md                — agent bodies (po, architect, designer, backend, ui, qa,
                                      reviewer, dev-manager)
     [ ] docker-compose.platform.yml— RUNNER_TOKEN, the ollama service, OLLAMA_MODEL

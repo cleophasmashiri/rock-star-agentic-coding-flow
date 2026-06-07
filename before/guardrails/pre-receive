@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runner-agnostic LEASH (skeleton). Install as the Gitea repo's server-side
-# `pre-receive` hook. Does NOT rely on Claude Code hooks. Full ref: ../../after/guardrails/.
+# `pre-receive` hook. Does NOT rely on a runner's client-side hooks. Full ref: ../../after/guardrails/.
 set -euo pipefail
 
 # TODO: for each pushed ref, enforce the leash:

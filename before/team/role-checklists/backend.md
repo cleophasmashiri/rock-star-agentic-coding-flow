@@ -1,7 +1,7 @@
 # Role checklist — backend. Edit via PR. The reviewer-agent verifies these against evidence.
 
 ## Readiness (verified ONCE, at preflight — proves the agent CAN do the role)
-- [ ] tools present: Bash, Edit, mcp__gitea            → orchestrator runs `claude doctor`
+- [ ] tools present: Bash, Edit, mcp__gitea            → orchestrator runs a tool preflight
 - [ ] skills loaded: implement-api-task, implement-db-task, mutation-drill
 - [ ] golden-fixture eval PASSES: on a known issue → green build (the chosen stack's verify
       command) + a PR, AND a seeded mutation (flip `<`→`<=`) turns a test RED

@@ -1,6 +1,6 @@
 # The orchestrator runs as a container in the platform compose stack.
 # It shells out to a LOCAL agent runner (default: goose) pointed at Ollama —
-# no cloud, no Anthropic SDK.
+# no cloud, no proprietary SDK.
 FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y git pipx curl && rm -rf /var/lib/apt/lists/*

@@ -1,7 +1,7 @@
 # The leash (runner-agnostic guardrails)
 
 Wire the autonomy guardrails so they hold regardless of the agent/runner — they
-must NOT depend on Claude Code hooks. Three layers to set up (full reference in
+must NOT depend on a runner's client-side hooks. Three layers to set up (full reference in
 [`../../after/guardrails/`](../../after/guardrails/)):
 
 1. **Gitea branch protection on `main`** — require PR + green CI + ≥1 approval;
