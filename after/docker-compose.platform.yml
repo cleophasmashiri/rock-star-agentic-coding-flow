@@ -21,7 +21,7 @@ services:
     ports: ["3001:3000"]
     depends_on: [postgres]
   mattermost:                  # chat + notifications — Teams/Slack alternative
-    image: mattermost/mattermost-team-edition:9
+    image: mattermost/mattermost-team-edition:release-9.11
     environment: { MM_SQLSETTINGS_DRIVERNAME: postgres,
                    MM_SQLSETTINGS_DATASOURCE: "postgres://postgres:dev@postgres/mattermost?sslmode=disable" }
     ports: ["8065:8065"]
